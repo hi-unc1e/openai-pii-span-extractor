@@ -19,7 +19,7 @@ docker run -d -p 8000:8000 --name opf ghcr.io/gh0stkey/opf-privacy-filter:latest
 With GPU acceleration:
 
 ```bash
-docker run -d -p 8000:8000 --gpus all -e OPF_DEVICE=cuda --name opf ghcr.io/gh0stkey/opf-privacy-filter:latest
+docker run -d -p 8000:8000 --gpus all  -e CC=gcc  -e OPF_DEVICE=cuda --name opf ghcr.io/gh0stkey/opf-privacy-filter:latest
 ```
 
 ### Environment Variables
