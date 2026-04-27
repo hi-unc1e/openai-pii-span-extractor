@@ -1,6 +1,6 @@
 # PII Span Extractor
 
-语言：**中文** | [English](README.en.md) | [中文完整版](README.zh-CN.md)
+语言：**中文** | [English](README-en.md)
 
 PII Span Extractor 是一个面向工程落地的隐私信息提取服务。它基于
 [OpenAI Privacy Filter](https://github.com/openai/privacy-filter) 模型，
@@ -208,6 +208,38 @@ scripts/evaluate_extract_quality.py \
 ```text
 baseline exact F1: 0.9231
 hybrid   exact F1: 1.0000
+```
+
+### L20 GPU 并发测试
+
+测试环境：NVIDIA L20 (46 GB)，CUDA 推理，`OPF_OUTPUT_MODE=typed`，短文本 (~318 B)。
+
+使用 `scripts/concurrency_benchmark_extract_api.py` 阶梯并发，每档 20-30 s：
+
+| 并发 | RPS | 平均延迟 (ms) | P50 (ms) | P95 (ms) | 错误 | GPU 利用率 | 显存 (MB) |
+|------|------:|---------:|--------:|--------:|-----:|---------:|--------:|
+| 1    |  62.9 |    15.9  |  16.0   |  16.5   |   0  |  39 %    | 3 537   |
+| 2    |  71.9 |    27.8  |  27.4   |  30.6   |   0  |  44 %    | 3 667   |
+| 4    |  60.4 |    66.2  |  66.1   |  71.9   |   0  |  40 %    | 3 667   |
+| 6    |  43.2 |   138.8  | 139.2   | 145.4   |   0  |  27 %    | 3 667   |
+| 8    |  40.0 |   199.6  | 199.5   | 207.7   |   0  |  26 %    | 3 667   |
+| 10   |  38.6 |   258.9  | 259.0   | 269.5   |   0  |  25 %    | 3 669   |
+| 12   |  38.2 |   313.6  | 313.6   | 326.8   |   0  |  29 %    | 3 669   |
+
+结论：
+
+- **最优并发为 2**，吞吐峰值 ~72 RPS，延迟 ~28 ms，GPU 利用率 ~44 %。
+- 并发 ≥ 4 后吞吐下降、延迟线性增长，GPU 利用率反而降低——瓶颈是单进程推理调度，非 GPU 算力。
+- 显存占用稳定在 ~3.7 GB / 46 GB，模型本身非常轻量。
+
+复现命令：
+
+```bash
+python scripts/concurrency_benchmark_extract_api.py \
+  --base-url http://localhost:8000 \
+  --levels 1,2,4,6,8,10,12 \
+  --duration 30 \
+  --sample-gpu
 ```
 
 纯 CPU 适合 Demo、小批量验证和低频离线任务。生产处理 MB/GB 级文件时，

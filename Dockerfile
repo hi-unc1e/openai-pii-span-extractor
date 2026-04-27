@@ -9,6 +9,8 @@ WORKDIR /app
 # Reuse the upstream OPF runtime and baked model, but replace the HTTP layer
 # with this project's extraction-first API.
 USER root
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
 COPY --chown=opf:opf server.py /app/server.py
 USER opf
 

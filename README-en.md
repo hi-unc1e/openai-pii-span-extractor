@@ -1,6 +1,6 @@
 # PII Span Extractor
 
-Language: [中文](README.zh-CN.md) | **English** | [Default README](README.md)
+Language: [中文](README.md) | **English**
 
 PII Span Extractor is a production-oriented service for extracting privacy
 signals from unstructured text. It is powered by the
@@ -214,6 +214,43 @@ Validated result:
 ```text
 baseline exact F1: 0.9231
 hybrid   exact F1: 1.0000
+```
+
+### L20 GPU Concurrency Benchmark
+
+Environment: NVIDIA L20 (46 GB), CUDA inference, `OPF_OUTPUT_MODE=typed`,
+short text (~318 B).
+
+Staircase concurrency via `scripts/concurrency_benchmark_extract_api.py`,
+20-30 s per level:
+
+| Concurrency | RPS | Avg Latency (ms) | P50 (ms) | P95 (ms) | Errors | GPU Util | VRAM (MB) |
+|-------------|-----:|---------:|--------:|--------:|-------:|--------:|--------:|
+| 1           | 62.9 |   15.9  |  16.0   |  16.5   |  0     | 39 %    | 3 537   |
+| 2           | 71.9 |   27.8  |  27.4   |  30.6   |  0     | 44 %    | 3 667   |
+| 4           | 60.4 |   66.2  |  66.1   |  71.9   |  0     | 40 %    | 3 667   |
+| 6           | 43.2 |  138.8  | 139.2   | 145.4   |  0     | 27 %    | 3 667   |
+| 8           | 40.0 |  199.6  | 199.5   | 207.7   |  0     | 26 %    | 3 667   |
+| 10          | 38.6 |  258.9  | 259.0   | 269.5   |  0     | 25 %    | 3 669   |
+| 12          | 38.2 |  313.6  | 313.6   | 326.8   |  0     | 29 %    | 3 669   |
+
+Key findings:
+
+- **Optimal concurrency is 2**, peak throughput ~72 RPS, ~28 ms latency,
+  GPU utilization ~44 %.
+- Concurrency ≥ 4 shows throughput decline and linear latency growth; GPU
+  utilization drops—the bottleneck is single-process scheduling, not GPU
+  compute.
+- VRAM stays at ~3.7 GB / 46 GB; the model is very lightweight.
+
+Reproduce:
+
+```bash
+python scripts/concurrency_benchmark_extract_api.py \
+  --base-url http://localhost:8000 \
+  --levels 1,2,4,6,8,10,12 \
+  --duration 30 \
+  --sample-gpu
 ```
 
 CPU mode is suitable for demos, small evaluations, and low-frequency offline
