@@ -1,4 +1,4 @@
-"""FastAPI server for OpenAI Privacy Filter (OPF).
+"""FastAPI server for PII Span Extractor.
 
 Loads the model once at startup and keeps it in memory.
 Exposes HTTP endpoints for PII redaction and extraction.
@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from opf._api import OPF, RedactionResult
 
-logger = logging.getLogger("opf-server")
+logger = logging.getLogger("pii-span-extractor")
 
 _redactor: OPF | None = None
 
@@ -109,8 +109,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="OPF Privacy Filter Service",
-    description="PII detection and redaction API powered by OpenAI Privacy Filter",
+    title="PII Span Extractor",
+    description="Structured PII span extraction API powered by OpenAI Privacy Filter",
     version="0.1.0",
     lifespan=lifespan,
 )
