@@ -2,52 +2,34 @@
 
 Language: [中文](README.zh-CN.md) | **English** | [Default README](README.md)
 
-## Positioning
-
-PII Span Extractor is a production-oriented service for extracting structured
-PII spans from unstructured text.
-
-If you need **privacy filtering or redaction**, use the official
-[OpenAI Privacy Filter](https://github.com/openai/privacy-filter). If you need
-**PII extraction**, this project provides a direct HTTP API, demo scripts,
-benchmarking tools, and quality evaluation.
-
-Input:
+PII Span Extractor is a production-oriented service for extracting privacy
+signals from unstructured text. It is powered by the
+[OpenAI Privacy Filter](https://github.com/openai/privacy-filter) model and
+returns structured spans:
 
 ```text
-My name is Alice Smith and my email is alice@example.com.
+label + text + start offset + end offset
 ```
 
-Output:
+If you need **privacy filtering or redaction**, use the official project. If
+you need **privacy extraction from logs, tickets, emails, contracts, or data
+lake text**, this project provides a direct HTTP API, demos, benchmarks, and
+quality evaluation tools.
 
-```json
-{
-  "label": "private_email",
-  "start": 39,
-  "end": 56,
-  "text": "alice@example.com"
-}
-```
+## Use Cases
 
-## Value
+- **AI data governance**: discover PII and secrets before enterprise text is
+  used in RAG, training datasets, analytics, or data lakes.
+- **Security audit and DLP**: convert hidden sensitive text into searchable
+  security signals.
+- **Redaction preflight**: locate names, emails, phones, addresses, accounts,
+  URLs, dates, and secrets before applying policy-specific masking.
+- **Compliance and data transfer review**: produce structured evidence for
+  privacy inventory, data classification, and cross-border review.
 
-- Turn logs, tickets, emails, and contracts into structured PII spans.
-- Return label, source text, and character offsets for audit and governance.
-- Run on-premises or inside a private network.
-- Keep the original redaction API while adding extraction-first workflows.
+## Deployment
 
-## Supported Labels
-
-- `account_number`
-- `private_address`
-- `private_email`
-- `private_person`
-- `private_phone`
-- `private_url`
-- `private_date`
-- `secret`
-
-## Quick Start
+Pull the image:
 
 ```bash
 docker pull ghcr.io/hi-unc1e/pii-span-extractor:latest
@@ -92,9 +74,7 @@ OPF_OUTPUT_MODE=typed
 OPF_DEVICE=cpu
 ```
 
-## Extraction API
-
-Recommended production-style hybrid request:
+## Extraction Demo
 
 ```bash
 curl -X POST http://localhost:8000/extract \
@@ -109,7 +89,7 @@ curl -X POST http://localhost:8000/extract \
   }'
 ```
 
-Response:
+Example response:
 
 ```json
 {
@@ -131,7 +111,44 @@ Response:
 }
 ```
 
-Batch extraction:
+Run the long-text demo:
+
+```bash
+scripts/demo_extract_api.py --base-url http://localhost:8000
+```
+
+## Supported Labels
+
+- `account_number`
+- `private_address`
+- `private_email`
+- `private_person`
+- `private_phone`
+- `private_url`
+- `private_date`
+- `secret`
+
+## API Options
+
+- `labels`: return only selected labels.
+- `include_text`: include or omit sensitive source text.
+- `merge_adjacent`: merge adjacent same-label spans.
+- `merge_strategy=label_aware`: use label-specific gap rules for merging.
+- `enable_regex_backstop`: add high-confidence URL, secret, and account spans.
+- `trim_punctuation`: trim common trailing punctuation.
+
+Recommended production-style hybrid options:
+
+```json
+{
+  "merge_adjacent": true,
+  "merge_strategy": "label_aware",
+  "enable_regex_backstop": true,
+  "trim_punctuation": true
+}
+```
+
+## Batch Extraction
 
 ```bash
 curl -X POST http://localhost:8000/extract/batch \
@@ -145,18 +162,9 @@ curl -X POST http://localhost:8000/extract/batch \
   }'
 ```
 
-## Request Options
+## Redaction Compatibility
 
-- `labels`: return only selected labels.
-- `include_text`: include or omit sensitive source text.
-- `merge_adjacent`: merge adjacent same-label spans.
-- `merge_strategy=label_aware`: use label-specific gap rules for merging.
-- `enable_regex_backstop`: add high-confidence URL, secret, and account spans.
-- `trim_punctuation`: trim common trailing punctuation.
-
-## Redaction API
-
-The original redaction workflow is still available:
+The original redaction API is still available:
 
 ```bash
 curl -X POST http://localhost:8000/redact \
@@ -164,31 +172,7 @@ curl -X POST http://localhost:8000/redact \
   -d '{"text": "My name is John and my email is john@example.com"}'
 ```
 
-Text-only redaction:
-
-```bash
-curl -X POST http://localhost:8000/redact/text \
-  -H "Content-Type: application/json" \
-  -d '{"text": "My name is John and my email is john@example.com"}'
-```
-
-## Demo
-
-```bash
-scripts/demo_extract_api.py --base-url http://localhost:8000
-```
-
-Remote verification:
-
-```bash
-OPF_SSH_HOST=8.215.27.92 \
-OPF_SSH_USER=root \
-OPF_SSH_PORT=22 \
-OPF_BASE_URL=http://localhost:8000 \
-scripts/verify_remote_extract_api.sh
-```
-
-## Benchmark
+## Performance and Quality
 
 Throughput benchmark:
 
