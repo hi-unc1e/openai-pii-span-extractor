@@ -6,10 +6,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone the official OpenAI privacy-filter repo
+# Clone the official OpenAI Privacy Filter repo.
 RUN git clone --depth 1 https://github.com/openai/privacy-filter.git .
 
-# Install dependencies (CPU-only torch to keep the image small)
+# Install dependencies (CPU-only torch to keep the image small).
 RUN pip install --no-cache-dir --prefix=/install \
     torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir --prefix=/install -e . && \
@@ -25,10 +25,10 @@ COPY --from=builder /install /usr/local
 # Copy the project source
 COPY --from=builder /build /app
 
-# Copy our server file
+# Copy the PII Span Extractor HTTP server.
 COPY server.py .
 
-# Download the model at build time so it's baked into the image
+# Download the model at build time so it is baked into the image.
 RUN python -c "from opf._api import resolve_checkpoint_path; resolve_checkpoint_path(None)"
 
 # Create non-root user

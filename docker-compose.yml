@@ -1,6 +1,7 @@
 services:
-  opf:
-    image: gh0stkey/opf-privacy-filter:latest
+  pii-span-extractor:
+    image: ghcr.io/hi-unc1e/pii-span-extractor:latest
+    container_name: pii-span-extractor
     ports:
       - "8000:8000"
     environment:
