@@ -28,18 +28,15 @@ COPY --from=builder /build /app
 # Copy the PII Span Extractor HTTP server.
 COPY server.py .
 
-# Download the model at build time so it is baked into the image.
-RUN python -c "from opf._api import resolve_checkpoint_path; resolve_checkpoint_path(None)"
-
-# Create non-root user
-RUN useradd -m -s /bin/bash opf && \
-    cp -r /root/.opf /home/opf/.opf && \
-    chown -R opf:opf /home/opf/.opf
-USER opf
+# Create a non-root runtime user. The model is intentionally not baked into
+# the public image; mount it with OPF_CHECKPOINT in production, or let OPF
+# download it into HOME on first startup for demos.
+RUN useradd -m -s /bin/bash extractor
+USER extractor
 
 ENV OPF_DEVICE=cpu
 ENV OPF_OUTPUT_MODE=typed
-ENV HOME=/home/opf
+ENV HOME=/home/extractor
 
 EXPOSE 8000
 

@@ -35,6 +35,10 @@ Pull the image:
 docker pull ghcr.io/hi-unc1e/pii-span-extractor:latest
 ```
 
+The public image does not bake model weights. For production, pre-download
+the model and mount it with `OPF_CHECKPOINT`; for demos, OPF can download the
+model on first startup.
+
 CPU:
 
 ```bash
@@ -72,6 +76,18 @@ to a local checkpoint:
 OPF_CHECKPOINT=/models/privacy_filter
 OPF_OUTPUT_MODE=typed
 OPF_DEVICE=cpu
+```
+
+Example with a mounted local model:
+
+```bash
+docker run -d \
+  -p 8000:8000 \
+  -v /models/privacy_filter:/models/privacy_filter:ro \
+  -e OPF_CHECKPOINT=/models/privacy_filter \
+  -e OPF_OUTPUT_MODE=typed \
+  --name pii-span-extractor \
+  ghcr.io/hi-unc1e/pii-span-extractor:latest
 ```
 
 ## Extraction Demo

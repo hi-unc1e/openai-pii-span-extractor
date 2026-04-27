@@ -31,6 +31,9 @@ label + text + start offset + end offset
 docker pull ghcr.io/hi-unc1e/pii-span-extractor:latest
 ```
 
+公开镜像不内置模型权重。生产环境建议把模型提前下载到本地磁盘，并通过
+`OPF_CHECKPOINT` 挂载；Demo 环境也可以让 OPF 在首次启动时自动下载。
+
 CPU 模式：
 
 ```bash
@@ -67,6 +70,18 @@ curl http://localhost:8000/health
 OPF_CHECKPOINT=/models/privacy_filter
 OPF_OUTPUT_MODE=typed
 OPF_DEVICE=cpu
+```
+
+挂载本地模型目录示例：
+
+```bash
+docker run -d \
+  -p 8000:8000 \
+  -v /models/privacy_filter:/models/privacy_filter:ro \
+  -e OPF_CHECKPOINT=/models/privacy_filter \
+  -e OPF_OUTPUT_MODE=typed \
+  --name pii-span-extractor \
+  ghcr.io/hi-unc1e/pii-span-extractor:latest
 ```
 
 ## 提取 Demo
