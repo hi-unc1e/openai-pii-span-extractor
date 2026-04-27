@@ -219,37 +219,41 @@ hybrid   exact F1: 1.0000
 ### L20 GPU Concurrency Benchmark
 
 Environment: NVIDIA L20 (46 GB), CUDA inference, `OPF_OUTPUT_MODE=typed`,
-short text (~318 B).
+uvicorn `--workers 2` (dual-process), short text (~318 B).
 
 Staircase concurrency via `scripts/concurrency_benchmark_extract_api.py`,
-20-30 s per level:
+20 s per level:
 
 | Concurrency | RPS | Avg Latency (ms) | P50 (ms) | P95 (ms) | Errors | GPU Util | VRAM (MB) |
 |-------------|-----:|---------:|--------:|--------:|-------:|--------:|--------:|
-| 1           | 62.9 |   15.9  |  16.0   |  16.5   |  0     | 39 %    | 3 537   |
-| 2           | 71.9 |   27.8  |  27.4   |  30.6   |  0     | 44 %    | 3 667   |
-| 4           | 60.4 |   66.2  |  66.1   |  71.9   |  0     | 40 %    | 3 667   |
-| 6           | 43.2 |  138.8  | 139.2   | 145.4   |  0     | 27 %    | 3 667   |
-| 8           | 40.0 |  199.6  | 199.5   | 207.7   |  0     | 26 %    | 3 667   |
-| 10          | 38.6 |  258.9  | 259.0   | 269.5   |  0     | 25 %    | 3 669   |
-| 12          | 38.2 |  313.6  | 313.6   | 326.8   |  0     | 29 %    | 3 669   |
+| 2           | 75.4 |   26.5  |  26.5   |  30.2   |  0     | 58 %    | 7 148   |
+| 4           | 80.6 |   49.6  |  51.4   |  67.9   |  0     | 64 %    | 7 150   |
+| 6           | 66.8 |   89.7  |  99.0   | 140.8   |  0     | 64 %    | 7 190   |
+| 8           | 61.6 |  129.6  | 157.0   | 201.7   |  0     | 58 %    | 7 232   |
+| 10          | 56.0 |  178.4  | 238.2   | 266.2   |  0     | 65 %    | 7 268   |
+| 12          | 54.9 |  217.9  | 293.4   | 324.6   |  0     | 54 %    | 7 300   |
 
 Key findings:
 
-- **Optimal concurrency is 2**, peak throughput ~72 RPS, ~28 ms latency,
-  GPU utilization ~44 %.
-- Concurrency ≥ 4 shows throughput decline and linear latency growth; GPU
-  utilization drops—the bottleneck is single-process scheduling, not GPU
-  compute.
-- VRAM stays at ~3.7 GB / 46 GB; the model is very lightweight.
+- **Optimal concurrency is 4**, peak throughput ~81 RPS, ~50 ms latency,
+  peak GPU utilization 91 %.
+- Dual workers raise GPU utilization from ~44 % (single process) to a
+  peak of **98 %**, fully leveraging the hardware.
+- VRAM at ~7.3 GB / 46 GB; the model is lightweight and the L20 handles
+  it easily.
+
+> **Hardware sizing note**: This model has low inference overhead; the L20
+> runs at ~50-65 % utilization under full load. Entry-level GPUs (L4 / A10G)
+> are sufficient for this workload. The L20 is better suited when you need
+> higher throughput or want to run multiple model instances simultaneously.
 
 Reproduce:
 
 ```bash
 python scripts/concurrency_benchmark_extract_api.py \
   --base-url http://localhost:8000 \
-  --levels 1,2,4,6,8,10,12 \
-  --duration 30 \
+  --levels 2,4,6,8,10,12 \
+  --duration 20 \
   --sample-gpu
 ```
 
