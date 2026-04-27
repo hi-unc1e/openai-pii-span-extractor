@@ -96,11 +96,16 @@ def benchmark_size(
     chunk_bytes: int,
     timeout: int,
     warmup: bool,
+    extract_options: dict,
 ) -> dict:
     if warmup:
         post_json(
             base_url,
-            {"text": make_text(min(2048, size.bytes_count), -1), "include_text": False},
+            {
+                "text": make_text(min(2048, size.bytes_count), -1),
+                "include_text": False,
+                **extract_options,
+            },
             timeout,
         )
 
@@ -115,7 +120,7 @@ def benchmark_size(
         text = make_text(current_size, requests)
         result = post_json(
             base_url,
-            {"text": text, "include_text": False, "merge_adjacent": True},
+            {"text": text, "include_text": False, **extract_options},
             timeout,
         )
         total_spans += len(result.get("extracted_spans", []))
@@ -211,6 +216,12 @@ def main() -> int:
             "actual run. Default 0 means run every size."
         ),
     )
+    parser.add_argument(
+        "--profile",
+        choices=("baseline", "merge", "regex", "hybrid"),
+        default="baseline",
+        help="Extraction profile to benchmark. Default: baseline",
+    )
     args = parser.parse_args()
 
     if args.chunk_bytes <= 0:
@@ -218,6 +229,18 @@ def main() -> int:
         return 2
 
     sizes = [parse_size(item) for item in args.sizes.split(",") if item.strip()]
+    profiles = {
+        "baseline": {},
+        "merge": {"merge_adjacent": True, "merge_strategy": "label_aware"},
+        "regex": {"enable_regex_backstop": True, "trim_punctuation": True},
+        "hybrid": {
+            "merge_adjacent": True,
+            "merge_strategy": "label_aware",
+            "enable_regex_backstop": True,
+            "trim_punctuation": True,
+        },
+    }
+    extract_options = profiles[args.profile]
     results = []
     benchmark_start = time.perf_counter()
     for size in sizes:
@@ -242,6 +265,7 @@ def main() -> int:
                 args.chunk_bytes,
                 args.timeout,
                 warmup=not args.no_warmup,
+                extract_options=extract_options,
             )
         except urllib.error.URLError as exc:
             print(f"Benchmark failed for {size.name}: {exc}", file=sys.stderr)
@@ -252,6 +276,8 @@ def main() -> int:
     output = {
         "base_url": args.base_url,
         "mode": "cpu-oriented HTTP benchmark",
+        "profile": args.profile,
+        "extract_options": extract_options,
         "machine": get_cpu_info(),
         "chunking_note": "Large inputs are split into chunks before calling /extract.",
         "estimation_note": (

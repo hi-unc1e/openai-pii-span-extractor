@@ -158,14 +158,70 @@ hybrid     100MB
 - 性能开销相对模型推理时间可忽略，目标低于 5%。
 - 输出 schema 与现有 `/extract` 兼容。
 
+## 当前验证记录
+
+验证环境：
+
+```text
+host: 8.215.27.92
+container: opf2
+cpu: 8 vCPU, Intel(R) Xeon(R) Gold 6462C
+opf_device: cpu
+opf_output_mode: typed
+commit: local working tree after 6a57070
+```
+
+质量评估命令：
+
+```bash
+scripts/evaluate_extract_quality.py \
+  --base-url http://localhost:8000 \
+  --profiles baseline,hybrid
+```
+
+结果：
+
+```text
+mode      exact_precision  exact_recall  exact_f1  overlap_f1  tail_punctuation_errors  avg_server_latency_ms
+baseline  0.9231           0.9231        0.9231    1.0000      1                        1088.27
+hybrid    1.0000           1.0000        1.0000    1.0000      0                        1091.99
+```
+
+解释：
+
+- hybrid 修复了 baseline 的尾部标点边界问题。
+- 在当前小型合成评估集上，hybrid exact F1 从 0.9231 提升到 1.0。
+- 平均服务端延迟基本不变，后处理成本相对模型推理可忽略。
+
+hybrid 性能冒烟命令：
+
+```bash
+scripts/benchmark_extract_api.py \
+  --base-url http://localhost:8000 \
+  --profile hybrid \
+  --sizes 1K \
+  --chunk-bytes 32768 \
+  --no-warmup
+```
+
+结果：
+
+```text
+1K actual
+wall_time_s: 9.038
+throughput_bytes_s: 113.3
+avg_server_latency_ms: 9017.62
+```
+
+结论：
+
+- 后处理优化有效提升边界质量。
+- 当前瓶颈仍是 CPU 模型推理，不是后处理逻辑。
+- 下一步应在 GPU 或更优运行时上跑同一套 quality + throughput benchmark。
+
 ## 下一步工程任务
 
-1. 给 `/extract` 增加可选后处理参数：
-   - `merge_strategy`
-   - `enable_regex_backstop`
-   - `trim_punctuation`
-2. 增加带 ground truth 的评估脚本。
-3. 复用当前远程 CPU 环境跑 baseline。
-4. 实现后处理后跑 merge/regex/hybrid 对照。
-5. 把结果补充到本文档。
-
+1. 在 L20 或同级 GPU 上运行同一套 benchmark。
+2. 补充更大、更贴近业务的数据集。
+3. 对 regex backstop 记录新增/覆盖 span 明细。
+4. 增加异步分块队列和文件级 offset 汇总。

@@ -100,7 +100,10 @@ curl -X POST http://localhost:8000/extract \
   -d '{
     "text": "My name is Alice Smith and my email is alice@example.com. Call me at 555-123-4567.",
     "include_text": true,
-    "merge_adjacent": true
+    "merge_adjacent": true,
+    "merge_strategy": "label_aware",
+    "enable_regex_backstop": true,
+    "trim_punctuation": true
   }'
 ```
 
@@ -149,6 +152,23 @@ curl -X POST http://localhost:8000/extract/batch \
     "labels": ["private_phone", "private_email"]
   }'
 ```
+
+生产建议使用 `hybrid` 风格参数：
+
+```json
+{
+  "merge_adjacent": true,
+  "merge_strategy": "label_aware",
+  "enable_regex_backstop": true,
+  "trim_punctuation": true
+}
+```
+
+含义：
+
+- `label_aware`：按类别合并短间隔同类 span，改善姓名、地址、日期边界。
+- `enable_regex_backstop`：对 URL、secret、账号做高置信规则回补。
+- `trim_punctuation`：修剪结构化 span 尾部常见标点。
 
 ## 脱敏接口
 
@@ -204,6 +224,16 @@ Benchmark 脚本会生成模拟敏感数据，并按块调用 `/extract`。这�
 scripts/benchmark_extract_api.py --base-url http://localhost:8000
 ```
 
+测试 hybrid 后处理：
+
+```bash
+scripts/benchmark_extract_api.py \
+  --base-url http://localhost:8000 \
+  --profile hybrid \
+  --sizes 1K,10K \
+  --estimate-over-bytes 10240
+```
+
 快速冒烟测试：
 
 ```bash
@@ -250,6 +280,30 @@ chunk_bytes: 32768
 
 结论：纯 CPU 模式适合 Demo、小批量验证和低频离线任务；如果要处理 MB/GB
 级文件，应使用 GPU、ONNX/量化运行时，或建立异步分块队列和批处理流水线。
+
+## 质量评估套件
+
+质量评估脚本会用带 ground truth 的合成样本对比不同后处理模式：
+
+```bash
+scripts/evaluate_extract_quality.py --base-url http://localhost:8000
+```
+
+输出包含：
+
+- exact precision / recall / F1
+- overlap precision / recall / F1
+- 尾部标点错误数
+- 客户端和服务端平均延迟
+
+可只跑某些模式：
+
+```bash
+scripts/evaluate_extract_quality.py \
+  --base-url http://localhost:8000 \
+  --profiles baseline,hybrid \
+  --details
+```
 
 ## 本地构建
 
