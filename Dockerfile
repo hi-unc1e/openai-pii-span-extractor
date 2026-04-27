@@ -1,42 +1,20 @@
-FROM python:3.12-slim AS builder
+FROM ghcr.io/gh0stkey/opf-privacy-filter:latest
 
-WORKDIR /build
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Clone the official OpenAI Privacy Filter repo.
-RUN git clone --depth 1 https://github.com/openai/privacy-filter.git .
-
-# Install dependencies (CPU-only torch to keep the image small).
-RUN pip install --no-cache-dir --prefix=/install \
-    torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir --prefix=/install -e . && \
-    pip install --no-cache-dir --prefix=/install fastapi uvicorn[standard]
-
-# --- Final stage ---
-FROM python:3.12-slim
+LABEL org.opencontainers.image.title="PII Span Extractor"
+LABEL org.opencontainers.image.description="Structured PII span extraction API powered by OpenAI Privacy Filter"
+LABEL org.opencontainers.image.source="https://github.com/hi-unc1e/pii-span-extractor"
 
 WORKDIR /app
 
-# Copy installed Python packages from builder
-COPY --from=builder /install /usr/local
-# Copy the project source
-COPY --from=builder /build /app
-
-# Copy the PII Span Extractor HTTP server.
-COPY server.py .
-
-# Create a non-root runtime user. The model is intentionally not baked into
-# the public image; mount it with OPF_CHECKPOINT in production, or let OPF
-# download it into HOME on first startup for demos.
-RUN useradd -m -s /bin/bash extractor
-USER extractor
+# Reuse the upstream OPF runtime and baked model, but replace the HTTP layer
+# with this project's extraction-first API.
+USER root
+COPY --chown=opf:opf server.py /app/server.py
+USER opf
 
 ENV OPF_DEVICE=cpu
 ENV OPF_OUTPUT_MODE=typed
-ENV HOME=/home/extractor
+ENV HOME=/home/opf
 
 EXPOSE 8000
 

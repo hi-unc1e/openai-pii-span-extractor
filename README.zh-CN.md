@@ -31,8 +31,9 @@ label + text + start offset + end offset
 docker pull ghcr.io/hi-unc1e/pii-span-extractor:latest
 ```
 
-公开镜像不内置模型权重。生产环境建议把模型提前下载到本地磁盘，并通过
-`OPF_CHECKPOINT` 挂载；Demo 环境也可以让 OPF 在首次启动时自动下载。
+本镜像基于 `ghcr.io/gh0stkey/opf-privacy-filter:latest` 构建，复用上游
+OPF 运行时和已缓存模型层，只替换为本项目的提取优先 HTTP API。因此
+Demo 启动更简单，首次启动通常不需要重新下载模型。
 
 CPU 模式：
 
@@ -64,7 +65,7 @@ docker run -d \
 curl http://localhost:8000/health
 ```
 
-国内节点建议提前把模型放到本地路径，然后通过 `OPF_CHECKPOINT` 加载：
+如需使用自定义模型或国内节点本地模型，也可以通过 `OPF_CHECKPOINT` 加载：
 
 ```bash
 OPF_CHECKPOINT=/models/privacy_filter

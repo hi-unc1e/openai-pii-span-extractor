@@ -35,9 +35,10 @@ Pull the image:
 docker pull ghcr.io/hi-unc1e/pii-span-extractor:latest
 ```
 
-The public image does not bake model weights. For production, pre-download
-the model and mount it with `OPF_CHECKPOINT`; for demos, OPF can download the
-model on first startup.
+The image is built from `ghcr.io/gh0stkey/opf-privacy-filter:latest`. It
+reuses the upstream OPF runtime and cached model layer, then replaces the HTTP
+layer with this project's extraction-first API. Demo startup is therefore
+simpler and usually does not need to download the model again.
 
 CPU:
 
@@ -69,8 +70,8 @@ Health check:
 curl http://localhost:8000/health
 ```
 
-For mainland China deployments, pre-download the model and point the service
-to a local checkpoint:
+For custom checkpoints or mainland China deployments, you can still point the
+service to a local model:
 
 ```bash
 OPF_CHECKPOINT=/models/privacy_filter
